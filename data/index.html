@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <title>Module Wi-Fi</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"charset="UTF-8" />
+    <link rel="stylesheet" type="text/css" href="w3.css">
+    <script type="text/javascript" src="script.js"></script>
+</head>
+<body class="w3-animate-opacity">
+
+    <div class="w3-card w3-blue w3-padding-small w3-center">
+        <h1>Configuration module Wi-Fi</h1>
+    </div>
+    <div class="w3-flex" style="flex-direction:row">
+        <div style="flex-grow: 2"></div>
+        <div class="w3-content w3-margin w3-card w3-padding-24 w3-round-large" style="flex-grow: 6">
+            <div class="w3-margin">
+                <form>
+                    <h3>Wi-Fi</h3>
+                    <p>
+                        <label>Nom du réseau* : </label>
+                        <input class="w3-input w3-border w3-round-large" name="wifi_ssid" type="text" placeholder="Nom du réseau" required="required">
+                    </p>
+                    <p>
+                        <label>Mots de passe : </label>
+                        <input class="w3-input w3-border w3-round-large" name="wifi_mdp" type="text" placeholder="Mots de passe">
+                    </p>
+                    <h3>MQTT</h3>
+                    <p>
+                        <label>Adress IP du broker* : </label>
+                        <input class="w3-input w3-border w3-round-large" name="mqtt_ip" type="text" placeholder="Adress IP" required="required">
+                    </p>
+                    <p>
+                        <label>Port du broker : </label>
+                        <input class="w3-input w3-border w3-round-large" name="mqtt_port" type="number" placeholder="Port">
+                    </p>
+                    <p>
+                        <label>Nom d'utilisateur :</label>
+                        <input class="w3-input w3-border w3-round-large" name="mqtt_user" type="text" placeholder="Nom d'utilisateur">
+                    </p>
+                    <p>
+                        <label>Mots de passe :</label>
+                        <input class="w3-input w3-border w3-round-large" name="mqtt_mdp" type="text" placeholder="Mots de passe">
+                    </p>
+                    <h3>Univers</h3>
+                    <p>
+                        <label>Numéro d'univers* :</label>
+                        <input class="w3-input w3-border w3-round-large" name="univers" type="number" placeholder="Numéro d'univers" required="required">
+                    </p>
+                    <br>
+                    <button onclick="bouttonConnexion(event)" type="submit" class="w3-button w3-border w3-round-large w3-green">Connexion</button>
+                </form>
+            </div>
+        </div>
+        <div style="flex-grow: 2"></div>
+    </div>
+
+    <div class="w3-padding w3-center">
+        <i><a href="https://mathis-martin.fr" style="text-decoration: none;">SN-DOC 2026 - Module - par MARTIN Mathis</a></i>
+    </div>
+    
+    <div id="popupAlert" class="w3-panel w3-display-container w3-animate-opacity" style="display:none;position:fixed;top:20px;right:20px;z-index:999;width:60%;">
+        <span onclick="document.getElementById('popupAlert').style.display='none'"
+        class="w3-button w3-large w3-display-topright">&times;</span>
+        <p id="popupMessage">Message d'alerte</p>
+      </div>
+
+</body>
+</html>
