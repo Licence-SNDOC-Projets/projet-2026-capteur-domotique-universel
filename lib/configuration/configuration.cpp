@@ -89,7 +89,6 @@ void Configuration::lireMemoire() {
     _userMqtt = memoire.getString(CLE_MEMOIRE_MQTT_USER, "");
     _mdpMqtt = memoire.getString(CLE_MEMOIRE_MQTT_MDP, "");
 
-    _univers = memoire.getInt(CLE_MEMOIRE_UNIVERS, 0);
     memoire.end();
   } else {
     Serial.println("Erreur à l'ouverture des préférences !");
@@ -124,7 +123,6 @@ void Configuration::creationServeurWeb() {
     String mqttPort = request->hasParam("mqtt_port") ? request->getParam("mqtt_port")->value() : (String)MQTT_PORT;
     String mqttUser = request->hasParam("mqtt_user") ? request->getParam("mqtt_user")->value() : "";
     String mqttMdp = request->hasParam("mqtt_mdp") ? request->getParam("mqtt_mdp")->value() : "";
-    String univers = request->hasParam("univers") ? request->getParam("univers")->value() : "";
 
     if (mqttPort == 0) mqttPort = 1883;
 
@@ -137,7 +135,6 @@ void Configuration::creationServeurWeb() {
     memoire.putString(CLE_MEMOIRE_MQTT_USER, mqttUser);
     memoire.putString(CLE_MEMOIRE_MQTT_MDP, mqttMdp);
 
-    memoire.putInt(CLE_MEMOIRE_UNIVERS, univers.toInt());
     memoire.end();
 
     Serial.println(F("Nouvelle configuration recue !"));
@@ -155,9 +152,6 @@ void Configuration::creationServeurWeb() {
     Serial.println(mqttUser);
     Serial.print("mqttMdp : ");
     Serial.println(mqttMdp);
-
-    Serial.print("univers : ");
-    Serial.println(univers);
 
     request->send(200, "text/plain", "Configuration sauvegardée. Redémarrage...");
     Serial.print(F("Configuration sauvegardée. Redémarrage..."));
@@ -181,7 +175,7 @@ void Configuration::creationPointAcces() {
 
 bool Configuration::configurationSauvegarder() {
 
-  if (_ssidWifi != "" && _ipMqtt != "" && _univers != 0)
+  if (_ssidWifi != "" && _ipMqtt != "")
   {
     return true;
   }
@@ -200,7 +194,6 @@ void resetConfiguration() {
   memoire.remove(CLE_MEMOIRE_MQTT_USER);
   memoire.remove(CLE_MEMOIRE_MQTT_MDP);
 
-  memoire.remove(CLE_MEMOIRE_UNIVERS);
   memoire.end();
 
   delay(1000);
@@ -251,10 +244,6 @@ String Configuration::getUserMqtt() {
 
 String Configuration::getMdpMqtt() {
   return _mdpMqtt;
-}
-
-int Configuration::getUnivers() {
-  return _univers;
 }
 
 bool Configuration::getFlagResetConfig() {

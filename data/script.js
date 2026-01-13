@@ -8,7 +8,6 @@ function bouttonConnexion(event) {
     const mqttPort = document.querySelector('input[name="mqtt_port"]').value.trim();
     const mqttUser = document.querySelector('input[name="mqtt_user"]').value.trim();
     const mqttMdp = document.querySelector('input[name="mqtt_mdp"]').value.trim();
-    const univers = document.querySelector('input[name="univers"]').value.trim();
 
     if (!ssid) {
         showPopup("Le nom du réseau Wi-Fi est requis.");
@@ -16,10 +15,6 @@ function bouttonConnexion(event) {
     }
     if (!mqttIp) {
         showPopup("L'adresse IP du broker MQTT est requise.");
-        return;
-    }
-    if (!univers) {
-        showPopup("Le numéro d'univers est requis.");
         return;
     }
 
