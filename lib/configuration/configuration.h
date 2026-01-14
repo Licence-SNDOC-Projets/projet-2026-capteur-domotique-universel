@@ -27,8 +27,6 @@
 #define CLE_MEMOIRE_MQTT_USER "mqtt_user"
 #define CLE_MEMOIRE_MQTT_MDP "mqtt_mdp"
 
-#define CLE_MEMOIRE_UNIVERS "univers"
-
 #define RESET_FLAG false
 #define NEW_FLAG true
 
@@ -47,7 +45,6 @@ class Configuration
         int getPortMqtt();
         String getUserMqtt();
         String getMdpMqtt();
-        int getUnivers();
 
 
         String getNameModuleWifi();
@@ -65,7 +62,6 @@ class Configuration
         int _portMqtt;
         String _userMqtt;
         String _mdpMqtt;
-        int _univers;
         String _nomModuleWifi;
 };
 

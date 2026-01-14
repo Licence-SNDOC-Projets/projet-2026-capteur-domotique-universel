@@ -7,8 +7,6 @@
 Configuration sauvegarde;
 Communication transmission;
 
-enum {Connexion, Wifi, Mqtt} menuModule;
-
 void initialiserWifi() {
 
   String wifiSsid = sauvegarde.getSsidWifi();
@@ -116,7 +114,6 @@ void nouveauMessage() {
 void envoieConfig() {
 
   bool flagTimerConfig = transmission.getFlagTimerConfig();
-  int univers = sauvegarde.getUnivers();
   String adressIp = sauvegarde.getIpAdress();
   String adressMac = sauvegarde.getMacAdress();
   float puissanceWifi = transmission.getPuissanceWifi();
@@ -131,7 +128,7 @@ void envoieConfig() {
 
 void loop()
 {
-  reinitilisationModule();
+//   reinitilisationModule();
 
   bool etatWifi = transmission.getEtatWifi();
   bool etatMqtt = transmission.getEtatMqtt();
@@ -141,7 +138,6 @@ void loop()
     nouveauMessage();
     envoieConfig();
   } else {
-    menuModule = Connexion;
     initialiserMqtt();
   }
 }
