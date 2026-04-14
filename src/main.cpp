@@ -1,143 +1,209 @@
 #include <Arduino.h>
-#include "configuration.h"
-#include "communication.h"
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include "HAMqttDeviceDiscovery.h"
 
-#define TEMPS_ATTENTE_MQTT 2000
+// ================= WIFI =================
+const char* WIFI_SSID = "TP-Link_5270";
+const char* WIFI_PASS = "25968460";
 
-Configuration sauvegarde;
-Communication transmission;
+// ================= MQTT =================
+const char* MQTT_HOST = "192.168.0.105";
+const int   MQTT_PORT = 1883;
+const char* MQTT_USER = "sndoc";
+const char* MQTT_PASS = "sndoc";
 
-void initialiserWifi() {
+// ================= GPIO =================
+#define RELAY_PIN 2
 
-  String wifiSsid = sauvegarde.getSsidWifi();
-  String wifiMdp = sauvegarde.getMdpWifi();
-  String nomModuleWifi = sauvegarde.getNameModuleWifi();
+WiFiClient wifiClient;
+PubSubClient mqttClient(wifiClient);
+HAMqttDeviceDiscovery ha(mqttClient);
 
-  Serial.println(F("Connexion au WiFi : "));
-  Serial.println("wifiSsid : " + wifiSsid);
-  Serial.println("wifiMdp : " + wifiMdp);
-  Serial.println("nomModuleWifi : " + nomModuleWifi);
-  transmission.initialiserWiFi(nomModuleWifi, wifiSsid, wifiMdp);
+bool relayState = false;
+float temperatureValue = 21.5;
+bool motionDetected = false;
 
+void mqttCallback(char* topic, byte* payload, unsigned int length) {
+  ha.handleMessage(topic, payload, length);
 }
 
-void initialiserMqtt() {
+void onSwitchCommand(const String& componentId, const String& payload) {
+  Serial.print("Commande recue pour: ");
+  Serial.println(componentId);
 
-  static long currentTime = 0;
-  static unsigned long previousTime = 0;
-  currentTime = millis();
+  Serial.print("Payload recu: ");
+  Serial.println(payload);
 
-  if((currentTime - previousTime) >= TEMPS_ATTENTE_MQTT) {
-
-    bool etatWifi = transmission.getEtatWifi();
-    bool etatMqtt = transmission.getEtatMqtt();
-
-    if(etatWifi == CONNECTER && etatMqtt == DECONNECTER) 
-    {
-
-      String mqttIp = sauvegarde.getIpMqtt();
-      int mqttPort = sauvegarde.getPortMqtt();
-      String mqttUser = sauvegarde.getUserMqtt();
-      String mqttMdp = sauvegarde.getMdpMqtt();
-
-      Serial.println(F("Connexion au MQTT : "));
-      Serial.println("mqttIp : " + mqttIp);
-      Serial.println("mqttPort : " + (String)mqttPort);
-      Serial.println("mqttUser : " + mqttUser);
-      Serial.println("mqttMdp : " + mqttMdp);
-
-      transmission.initialiserMQTT(mqttIp, mqttPort, mqttUser, mqttMdp);
+  if (componentId == "relay_1") {
+    if (payload == "ON") {
+      relayState = true;
+      digitalWrite(RELAY_PIN, HIGH);
+    } else if (payload == "OFF") {
+      relayState = false;
+      digitalWrite(RELAY_PIN, LOW);
     }
 
-
-    previousTime = currentTime;
-
+    ha.publishTopicState(
+      "devices/esp32_salon/relay_1/state",
+      relayState ? "ON" : "OFF",
+      true
+    );
   }
-
 }
 
-void setup()
-{
+void connectWiFi() {
+  Serial.println("Connexion WiFi...");
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
 
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println();
+  Serial.println("WiFi connecte");
+  Serial.print("IP: ");
+  Serial.println(WiFi.localIP());
+}
+
+void connectMQTT() {
+  mqttClient.setServer(MQTT_HOST, MQTT_PORT);
+  mqttClient.setCallback(mqttCallback);
+
+  mqttClient.setBufferSize(4096);
+
+  ha.setSwitchCommandCallback(onSwitchCommand);
+
+  while (!mqttClient.connected()) {
+    String clientId = "esp32-" + String((uint32_t)ESP.getEfuseMac(), HEX);
+
+    Serial.print("Connexion MQTT... ");
+    if (mqttClient.connect(
+          clientId.c_str(),
+          MQTT_USER,
+          MQTT_PASS,
+          "devices/esp32_salon/availability",
+          1,
+          true,
+          "offline")) {
+
+      Serial.println("OK");
+
+      Serial.println("Publication availability...");
+      bool ok1 = ha.publishAvailability(true, true);
+      Serial.println(ok1 ? "OK" : "ECHEC");
+
+      Serial.println("Publication discovery...");
+      Serial.println("Topic attendu: homeassistant/device/esp32_salon/config");
+      bool ok2 = ha.publishDiscovery();
+      Serial.println(ok2 ? "OK" : "ECHEC");
+
+    } else {
+      Serial.print("Erreur MQTT rc=");
+      Serial.println(mqttClient.state());
+      delay(2000);
+    }
+  }
+}
+
+void setup() {
   Serial.begin(115200);
-  sauvegarde.initialiserMemoire();
+  delay(1000);
 
-  if (sauvegarde.configurationSauvegarder() == true)
-  {
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, LOW);
 
-    Serial.println(F("Recuperation des donners sauvegarder :"));
+  connectWiFi();
 
-    initialiserWifi();
+  HAMqttDeviceDiscovery::DeviceInfo dev;
+  dev.ids = "esp32_salon";
+  dev.name = "ESP32 Salon";
+  dev.mf = "DIY";
+  dev.mdl = "ESP32 DevKit";
+  dev.sw = "1.0.0";
+  dev.sn = "esp32_salon_001";
+  dev.hw = "revA";
 
-  } else {
-    Serial.println(F("pas de valeur sauvegarder !"));
-    sauvegarde.creationPointAcces();
-    delay(2000);
-  }
+  HAMqttDeviceDiscovery::OriginInfo origin;
+  origin.name = "esp32-ha-discovery";
+  origin.sw = "1.0.0";
+  origin.url = "https://example.local/support";
 
-  sauvegarde.creationServeurWeb();
+  ha.begin(dev, origin, "homeassistant");
+  ha.setAvailability("devices/esp32_salon/availability", "online", "offline");
+  ha.setBirthTopic("homeassistant/status", "online");
+  ha.setSwitchCommandCallback(onSwitchCommand);
+
+  ha.addSensor(
+    "temperature",
+    "esp32_salon_temperature",
+    "devices/esp32_salon/temperature/state",
+    "temperature",
+    "°C",
+    "measurement",
+    "",
+    "Temperature"
+  );
+
+  ha.addBinarySensor(
+    "motion",
+    "esp32_salon_motion",
+    "devices/esp32_salon/motion/state",
+    "motion",
+    "ON",
+    "OFF",
+    "",
+    "Motion"
+  );
+
+  ha.addSwitch(
+    "relay_1",
+    "esp32_salon_relay_1",
+    "devices/esp32_salon/relay_1/state",
+    "devices/esp32_salon/relay_1/set",
+    "ON",
+    "OFF",
+    "Relay 1"
+  );
+
+  connectMQTT();
 }
 
-void reinitilisationModule() {
+unsigned long lastPublish = 0;
 
-  bool flagResetConfig = sauvegarde.getFlagResetConfig();
-
-  if (flagResetConfig == NEW_FLAG)
-  {
-    flagResetConfig = RESET_FLAG;
-    resetConfiguration();
-  }
-  
-}
-
-void nouveauMessage() {
-
-  transmission.receptionDataMQTT();
-
-  bool flag = transmission.getFlag();
-  String topic = transmission.getTopic();
-  String message = transmission.getMessage();
-  String topicReceptionCanaux = (String)MQTT_TOPIC_RECEPTION_CANAUX;
-
-  if (flag == NEW_FLAG)
-  {
-
-    //TODO : action a faire lors de la reception d'un nouveau message mqtt
-    Serial.println(topic);
-    Serial.println(message);
-
-    transmission.setFlag(RESET_FLAG);
+void loop() {
+  if (!mqttClient.connected()) {
+    connectMQTT();
   }
 
-}
+  mqttClient.loop();
+  ha.loop();
 
-void envoieConfig() {
+  if (millis() - lastPublish > 500) {
+    lastPublish = millis();
 
-  bool flagTimerConfig = transmission.getFlagTimerConfig();
-  String adressIp = sauvegarde.getIpAdress();
-  String adressMac = sauvegarde.getMacAdress();
-  float puissanceWifi = transmission.getPuissanceWifi();
+    temperatureValue += 0.1;
+    if (temperatureValue > 25.0) temperatureValue = 21.0;
 
-  if (flagTimerConfig == NEW_FLAG)
-  {
-    transmission.setFlagTimerConfig(RESET_FLAG);
-    envoieConfiguration(adressIp, adressMac, puissanceWifi);
-  }
-  
-}
+    motionDetected = !motionDetected;
 
-void loop()
-{
-//   reinitilisationModule();
+    ha.publishTopicState(
+      "devices/esp32_salon/temperature/state",
+      String(temperatureValue, 1),
+      true
+    );
 
-  bool etatWifi = transmission.getEtatWifi();
-  bool etatMqtt = transmission.getEtatMqtt();
+    ha.publishTopicState(
+      "devices/esp32_salon/motion/state",
+      motionDetected ? "ON" : "OFF",
+      true
+    );
 
-  if (etatWifi == CONNECTER && etatMqtt == CONNECTER)
-  {
-    nouveauMessage();
-    envoieConfig();
-  } else {
-    initialiserMqtt();
+    ha.publishTopicState(
+      "devices/esp32_salon/relay_1/state",
+      relayState ? "ON" : "OFF",
+      true
+    );
   }
 }

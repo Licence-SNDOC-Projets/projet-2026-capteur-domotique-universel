@@ -16,20 +16,11 @@
 #define MQTT_USER ""
 #define MQTT_MDP ""
 
-#define MQTT_TOPIC_GENERALE "sndoc/"
-#define MQTT_TOPIC_CONFIG_MODULE  MQTT_TOPIC_GENERALE + "config"
-#define MQTT_TOPIC_RECEPTION_CANAUX  ""
-
 #define RESET_FLAG false
 #define NEW_FLAG true
 #define DECONNECTER false
 #define CONNECTER true
 #define LIMITE_COMPTEUR 10
-
-// Timer d'envoie de la configuration (15s)
-#define NUMERO_TIMER 3
-#define FREQUENCE_TIMER 80
-#define TEMPS_ATTENTE 15000000
 
 #define RSSI_TRES_BON -55
 #define RSSI_ASSEZ_BON -67
@@ -50,8 +41,6 @@ public:
     void setMessage(String mqttMessage);
     bool getFlag();
     void setFlag(bool mqttFlag);
-    void setFlagTimerConfig(bool mqttFlagTimerConfig);
-    bool getFlagTimerConfig();
     bool getEtatWifi();
     bool getEtatMqtt();
     float getPuissanceWifi();
@@ -59,12 +48,10 @@ public:
 
 private:
     float _puissanceWifi;
-    void sinscrireAuxTopic();
-    void initialiserTimer();
+    // void sinscrireAuxTopic();
 
 };
 
-void envoieConfiguration(String adressIp, String adressMac, float puissanceWifi);
 void envoyerMessage(String mqtt_topic, String data);
 
 #endif
