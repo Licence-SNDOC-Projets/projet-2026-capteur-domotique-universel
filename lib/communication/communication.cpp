@@ -1,6 +1,5 @@
 #include "communication.h"
 #include <Arduino.h>
-#include "ha_factory/ha_discovery.h"
 
 String _mqttTopic;
 String _mqttMessage;
@@ -15,8 +14,7 @@ volatile uint8_t _compteurMqtt = 0;
 volatile uint8_t _compteurWifi = 0;
 volatile bool _mqttFlagNouveauMessage = RESET_FLAG;
 
-WiFiClient connexionWiFi;
-PubSubClient clientMQTT(connexionWiFi);
+ClientMQTT clientMQTT;
 JsonDocument jsonConfig;
 
 void interruptionWifiConnecter(WiFiEvent_t wifi_event, WiFiEventInfo_t wifi_info) {
@@ -55,21 +53,19 @@ void envoyerMessage(String mqtt_topic, String data)
     clientMQTT.publish(mqtt_topic.c_str(), data.c_str());
 }
 
+Communication::Communication(ClientMQTT& clientMqtt) {
+    this->setClientMqtt(clientMqtt);
+}
+
+Communication::~Communication() {}
+
 void Communication::receptionDataMQTT()
 {
     clientMQTT.loop();
-    ha_discovery::publishState(WiFi.localIP().toString(), WiFi.macAddress(), WiFi.RSSI());
 }
 
 void Communication::initialiserWiFi(String nomModuleWifi, String ssid, String password)
 {
-
-    ha_discovery::begin(
-        DESCOVERY_PREFIX,
-        "module_de_test_esp32",
-        "ESP32",
-        "1.0.0"
-    );
 
     _nomModuleWifi = nomModuleWifi;
     _wifiSsid = ssid;
@@ -96,8 +92,6 @@ void Communication::initialiserMQTT(String mqttBroker, uint16_t mqttPort, String
 
         Serial.printf("\r\nMQTT : Le client : %s est connecter au broker\r\n", _nomModuleWifi.c_str());
         // this->sinscrireAuxTopic();
-
-        ha_discovery::publishDiscovery(WiFi.localIP().toString() , WiFi.macAddress());
         
     }
 }
@@ -181,4 +175,8 @@ String Communication::getQualiterWifi()
         return "Mediocre";
     }
   
+}
+
+void Communication::setClientMqtt(ClientMqtt& clientMqtt) {
+    this->_clientMqtt = &clientMqtt;
 }

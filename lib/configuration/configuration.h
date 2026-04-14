@@ -1,5 +1,5 @@
-#ifndef _CONFIGURATION_H__
-#define __CONFIGURATION_H__
+#ifndef CONFIGURATION_H
+#define CONFIGURATION_H
 
 #include <Arduino.h>
 #include <WiFi.h>

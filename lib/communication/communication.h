@@ -4,8 +4,6 @@
 #define MQTT_MAX_PACKET_SIZE 1024
 
 #include <Arduino.h>
-#include <PubSubClient.h>
-#include <WiFi.h>
 #include "esp_timer.h"
 #include <ArduinoJson.h>
 
@@ -27,10 +25,16 @@
 #define RSSI_PASSABLE -70
 #define RSSI_PAS_BON -80
 
+class ClientMQTT;
+
 class Communication
 {
 
 public:
+
+    Communication(ClientMQTT& clientMqtt);
+    ~Communication();
+
     void initialiserWiFi(String nomModuleWifi, String ssid, String password = WIFI_MDP);
     void initialiserMQTT(String mqttBroker, uint16_t mqttPort = MQTT_PORT, String mqttUsername = MQTT_USER, String mqttPassword = MQTT_MDP);
     void receptionDataMQTT();
@@ -47,8 +51,11 @@ public:
     String getQualiterWifi();
 
 private:
+    ClientMQTT* _clientMqtt;
     float _puissanceWifi;
     // void sinscrireAuxTopic();
+
+    void setClientMqtt(ClientMQTT& clientMqtt);
 
 };
 
