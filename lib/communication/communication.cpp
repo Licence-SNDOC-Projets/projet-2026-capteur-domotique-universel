@@ -1,5 +1,9 @@
 #include "communication.h"
 #include <Arduino.h>
+#include <ArduinoJson.h>
+#include <WiFi.h>
+
+JsonDocument jsonConfig;
 
 String _mqttTopic;
 String _mqttMessage;
@@ -14,19 +18,23 @@ volatile uint8_t _compteurMqtt = 0;
 volatile uint8_t _compteurWifi = 0;
 volatile bool _mqttFlagNouveauMessage = RESET_FLAG;
 
-ClientMQTT clientMQTT;
-JsonDocument jsonConfig;
-
 void interruptionWifiConnecter(WiFiEvent_t wifi_event, WiFiEventInfo_t wifi_info) {
     Serial.println(F("Wifi : Module connecter au reseau"));
 }
 
 void interruptionWifiDeconnecter(WiFiEvent_t wifi_event, WiFiEventInfo_t wifi_info) {
-    if (_compteurWifi >= LIMITE_COMPTEUR) ESP.restart();
-    Serial.println(F("Wifi : Module non connecter, connexion en cours..."));
-    WiFi.begin(_wifiSsid, _wifiMdp);
     _etatConnexionWifi = DECONNECTER;
+
+    Serial.print(F("Wifi : deconnecte, raison = "));
+    Serial.println(wifi_info.wifi_sta_disconnected.reason);
+
+    if (_compteurWifi >= LIMITE_COMPTEUR) {
+        Serial.println(F("Wifi : trop d'echecs, restart"));
+        ESP.restart();
+    }
+
     _compteurWifi++;
+    WiFi.begin(_wifiSsid.c_str(), _wifiMdp.c_str());
 }
 
 void interruptionWifiNouvelleAdressIp(WiFiEvent_t wifi_event, WiFiEventInfo_t wifi_info) {
@@ -38,7 +46,6 @@ void interruptionWifiNouvelleAdressIp(WiFiEvent_t wifi_event, WiFiEventInfo_t wi
 
 void interuptionNouveauMessageMQTT(char *mqttTopic, byte *mqttPayload, unsigned int nombreCarathere)
 {
-    // Pré-alloue la taille du message pour éviter les reallocations
     String message((char*)mqttPayload, nombreCarathere);
 
     Serial.println(message);
@@ -48,64 +55,59 @@ void interuptionNouveauMessageMQTT(char *mqttTopic, byte *mqttPayload, unsigned 
     _mqttMessage = message;
 }
 
-void envoyerMessage(String mqtt_topic, String data)
-{
-    clientMQTT.publish(mqtt_topic.c_str(), data.c_str());
-}
-
-Communication::Communication(ClientMQTT& clientMqtt) {
-    this->setClientMqtt(clientMqtt);
-}
+Communication::Communication(PubSubClient& clientMqtt)
+    : _clientMqtt(&clientMqtt) {}
 
 Communication::~Communication() {}
 
 void Communication::receptionDataMQTT()
 {
-    clientMQTT.loop();
+    if (_clientMqtt != nullptr) {
+        _clientMqtt->loop();
+    }
 }
 
 void Communication::initialiserWiFi(String nomModuleWifi, String ssid, String password)
 {
-
     _nomModuleWifi = nomModuleWifi;
     _wifiSsid = ssid;
     _wifiMdp = password;
-
-    WiFi.mode(WIFI_MODE_STA);
 
     WiFi.onEvent(interruptionWifiConnecter, ARDUINO_EVENT_WIFI_STA_CONNECTED);
     WiFi.onEvent(interruptionWifiNouvelleAdressIp, ARDUINO_EVENT_WIFI_STA_GOT_IP);
     WiFi.onEvent(interruptionWifiDeconnecter, ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
 
-    WiFi.begin(ssid.c_str(), password.c_str());
+    WiFi.mode(WIFI_STA);
+    WiFi.setSleep(false); // utile sur certains réseaux
+    delay(100);
 
+    Serial.print(F("wifiSsid : "));
+    Serial.println(_wifiSsid);
+    Serial.print(F("nomModuleWifi : "));
+    Serial.println(_nomModuleWifi);
+
+    WiFi.begin(_wifiSsid.c_str(), _wifiMdp.c_str());
+
+Serial.print("Tentative connexion a : ");
+Serial.println(_wifiSsid);
+
+wl_status_t status = WiFi.status();
+Serial.print("Status initial : ");
+Serial.println(status);
 }
 
 void Communication::initialiserMQTT(String mqttBroker, uint16_t mqttPort, String mqttUsername, String mqttPassword)
 {
-    
-    clientMQTT.setServer(mqttBroker.c_str(), mqttPort);
-    clientMQTT.setCallback(interuptionNouveauMessageMQTT);
+    if (_clientMqtt == nullptr) return;
+
+    _clientMqtt->setServer(mqttBroker.c_str(), mqttPort);
+    _clientMqtt->setCallback(interuptionNouveauMessageMQTT);
 
     Serial.print(F("MQTT : Tentative de connexion au broker..."));
-    if (clientMQTT.connect(_nomModuleWifi.c_str(), mqttUsername.c_str(), mqttPassword.c_str())) {
-
+    if (_clientMqtt->connect(_nomModuleWifi.c_str(), mqttUsername.c_str(), mqttPassword.c_str())) {
         Serial.printf("\r\nMQTT : Le client : %s est connecter au broker\r\n", _nomModuleWifi.c_str());
-        // this->sinscrireAuxTopic();
-        
     }
 }
-
-// void Communication::sinscrireAuxTopic() {
-
-//     String topicLectureCanaux = (String)MQTT_TOPIC_RECEPTION_CANAUX;
-
-//     clientMQTT.subscribe(topicLectureCanaux.c_str());
-
-//     Serial.print(F("Abonner au topic : "));
-//     Serial.println(topicLectureCanaux);
-
-// }
 
 String Communication::getTopic()
 {
@@ -144,39 +146,30 @@ bool Communication::getEtatWifi()
 
 bool Communication::getEtatMqtt()
 {
-    _etatConnexionMqtt = clientMQTT.connected();
+    if (_clientMqtt == nullptr) return false;
+    _etatConnexionMqtt = _clientMqtt->connected();
     return _etatConnexionMqtt;
 }
 
 float Communication::getPuissanceWifi()
 {
-  _puissanceWifi = WiFi.RSSI();
-  return _puissanceWifi;
+    _puissanceWifi = WiFi.RSSI();
+    return _puissanceWifi;
 }
 
 String Communication::getQualiterWifi()
 {
     this->getPuissanceWifi();
 
-    if (_puissanceWifi >= RSSI_TRES_BON)
-    {
+    if (_puissanceWifi >= RSSI_TRES_BON) {
         return "Tres bon";
-    } else if(_puissanceWifi >= RSSI_ASSEZ_BON) 
-    {
+    } else if (_puissanceWifi >= RSSI_ASSEZ_BON) {
         return "Assez bon";
-    } else if(_puissanceWifi >= RSSI_PASSABLE) 
-    {
+    } else if (_puissanceWifi >= RSSI_PASSABLE) {
         return "Passable";
-    } else if(_puissanceWifi >= RSSI_PAS_BON) 
-    {
+    } else if (_puissanceWifi >= RSSI_PAS_BON) {
         return "Pas bon";
-    } else
-    {
+    } else {
         return "Mediocre";
     }
-  
-}
-
-void Communication::setClientMqtt(ClientMqtt& clientMqtt) {
-    this->_clientMqtt = &clientMqtt;
 }

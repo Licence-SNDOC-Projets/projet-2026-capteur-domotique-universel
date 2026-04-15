@@ -39,7 +39,7 @@ void Configuration::initialiserMemoire() {
 
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
 
-  this->initialiserBoutonReset();
+  // this->initialiserBoutonReset();
 
   esp_err_t err = nvs_flash_init();
   if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {

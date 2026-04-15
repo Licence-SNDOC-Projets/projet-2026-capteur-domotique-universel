@@ -4,10 +4,14 @@
 Thermostat thermostat;
 
 void setup() {
-
+  thermostat.initialiserWifi();
+  thermostat.configurationEquipement();
 }
 
 
 void loop() {
-  thermostat.configurationConnection();
+  if (thermostat.connection())
+  {
+    thermostat.procedure();
+  }
 }

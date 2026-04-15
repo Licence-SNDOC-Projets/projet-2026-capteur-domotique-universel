@@ -19,7 +19,7 @@ function bouttonConnexion(event) {
     }
 
     // Construit l'URL de la requête
-    const url = `/config?wifi_ssid=${encodeURIComponent(ssid)}&wifi_mdp=${encodeURIComponent(wifiMdp)}&mqtt_ip=${encodeURIComponent(mqttIp)}&mqtt_port=${encodeURIComponent(mqttPort)}&mqtt_user=${encodeURIComponent(mqttUser)}&mqtt_mdp=${encodeURIComponent(mqttMdp)}&univers=${encodeURIComponent(univers)}`;
+    const url = `/config?wifi_ssid=${encodeURIComponent(ssid)}&wifi_mdp=${encodeURIComponent(wifiMdp)}&mqtt_ip=${encodeURIComponent(mqttIp)}&mqtt_port=${encodeURIComponent(mqttPort)}&mqtt_user=${encodeURIComponent(mqttUser)}&mqtt_mdp=${encodeURIComponent(mqttMdp)}`;
 
     // Envoie la requête au serveur ESP32
     var xhttp = new XMLHttpRequest();
